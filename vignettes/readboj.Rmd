@@ -1,0 +1,197 @@
+---
+title: "Getting started with readboj"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Getting started with readboj}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+`readboj` is an R client for official Bank of Japan (BOJ) statistics. It is
+designed for workflows where the source response, parser schema, and
+retrieval identity matter as much as the resulting values. The package can
+read exact API series, search metadata, inspect official bulk files, and
+discover dated Tankan comprehensive-data releases.
+
+This article takes the shortest path to a useful result. Its default build
+combines a verified rendering made from an official API response with small
+synthetic fixtures that exercise the public parsers. Network retrieval remains
+an explicit opt-in, so vignette and CRAN builds stay deterministic and offline.
+
+## Load the package and discover databases
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", width = 78)
+library(readboj)
+
+live <- identical(Sys.getenv("READBOJ_LIVE_EXAMPLES"), "true")
+chart_live <- live && requireNamespace("ggplot2", quietly = TRUE)
+
+fixture_file <- function(name) {
+  path <- system.file("extdata", name, package = "readboj")
+  if (!nzchar(path)) {
+    candidates <- c(file.path("inst", "extdata", name),
+      file.path("..", "inst", "extdata", name))
+    path <- candidates[file.exists(candidates)][1L]
+  }
+  if (!nzchar(path) || !file.exists(path)) stop("Fixture is unavailable: ", name)
+  normalizePath(path, mustWork = TRUE)
+}
+
+figure_file <- function(name) {
+  candidates <- c(
+    file.path("man", "figures", name),
+    file.path("..", "man", "figures", name),
+    system.file("help", "figures", name, package = "readboj")
+  )
+  path <- candidates[nzchar(candidates) & file.exists(candidates)][1L]
+  if (!length(path) || is.na(path)) stop("Figure is unavailable: ", name)
+  path
+}
+```
+
+```{r databases}
+databases <- boj_databases()
+databases[c(1L, 12L, 40L), c("db", "category_en", "name_en")]
+```
+
+`boj_databases()` is a local, revisioned registry. Its `db` values are the
+identities accepted by the API; the bilingual names and category are useful
+for presenting a choice to a user. The returned data frame also has
+provenance, including the BOJ API-manual URL and source hash:
+
+```{r database-provenance}
+db_provenance <- boj_provenance(databases)
+db_provenance[c("source", "source_url", "manual_revision", "database_count")]
+```
+
+## Retrieve and chart a time series
+
+The following workflow searches official metadata, selects the exact monthly
+exchange-rate series `FM08/FXERM07`, retrieves a closed 2025 period, keeps
+valid `date` and `value` rows, and charts the result. Set
+`READBOJ_LIVE_EXAMPLES=true` to execute the bounded network path.
+The default article build displays the checked-in rendering made from the
+verified response recorded in `inst/NOTICE/boj-chart-source.txt`.
+
+```{r retrieve-chart-data, eval=chart_live}
+cache <- file.path(tempdir(), "readboj-chart-cache")
+matches <- search_boj_series(
+  query = "FXERM07", db = "FM08", language = "en", limit = 10L,
+  cache_dir = cache, deadline = Sys.time() + 90
+)
+selected <- matches[matches$series_code == "FXERM07", , drop = FALSE]
+stopifnot(nrow(selected) == 1L)
+
+series <- read_boj_series(
+  db = selected$db[[1]], code = selected$series_code[[1]],
+  start_date = "202501", end_date = "202512", language = "en",
+  cache_dir = cache, deadline = Sys.time() + 90
+)
+chart_data <- series[
+  !is.na(series$date) & is.finite(series$value),
+  c("date", "value")
+]
+stopifnot(nrow(chart_data) > 1L)
+```
+
+```{r retrieve-chart, eval=chart_live, fig.width=6, fig.height=5, out.width="100%", fig.alt="Line chart of the monthly yen per U.S. dollar spot rate during 2025, falling through April and rising through December."}
+if (requireNamespace("ggplot2", quietly = TRUE)) {
+  ggplot2::ggplot(
+    chart_data,
+    ggplot2::aes(x = date, y = value)
+  ) +
+    ggplot2::geom_line() +
+    ggplot2::labs(
+      title = "Yen per U.S. dollar in 2025",
+      subtitle = "Monthly published observations",
+      x = "Month",
+      y = "Yen per U.S. dollar",
+      caption = "Source: Bank of Japan Time-Series Data Search API"
+    ) +
+    ggplot2::theme_minimal(base_size = 13)
+}
+```
+
+```{r retrieve-chart-image, echo=FALSE, eval=!chart_live, out.width="100%", fig.alt="Line chart of the monthly yen per U.S. dollar spot rate during 2025, falling through April and rising through December."}
+knitr::include_graphics(figure_file("readboj-fxerm07-2025.png"))
+```
+
+The rendered series is *US.Dollar/Yen Spot Rate at 17:00 in JST, Average in
+the Month, Tokyo Market*, measured in yen per U.S. dollar. The chart is a
+readboj documentation illustration rather than an official BoJ chart or a
+bundled raw-data snapshot. Use `boj_provenance(series)` after a live run to
+retain the response URL, retrieval time, hashes, and query identity.
+
+## Parse and inspect a saved response
+
+For a completely reproducible first success, parse an exact local response
+body with `read_boj_snapshot()`. This is the same normalised observation
+schema used by the API reader, without a live request:
+
+```{r first-success}
+observations <- read_boj_snapshot(
+  fixture_file("api-data-page-1.json"),
+  type = "data_json",
+  db = "FM08"
+)
+observations[, c(
+  "db", "series_code", "frequency", "period", "date",
+  "value", "raw_value", "value_status"
+)]
+```
+
+The observation table keeps both the official period code and a parsed
+`Date`. `value` is numeric where a value is present; a JSON `null` remains an
+`NA_real_`, and `value_status` records that it was `"null"`. The `raw_value`
+column is retained so a downstream transformation can distinguish a missing
+source value from a value that was never returned.
+
+The result is an ordinary data frame with stable columns and a provenance
+attribute. Use `boj_provenance()` whenever a result is saved, joined, or
+reported:
+
+```{r first-provenance}
+observation_provenance <- boj_provenance(observations)
+observation_provenance[c(
+  "source", "raw_sha256", "semantic_sha256", "bytes",
+  "parser_schema"
+)]
+basename(observation_provenance$path)
+```
+
+The raw SHA-256 identifies the exact response bytes. For JSON, the semantic
+hash is stable when only the volatile API `DATE` changes. This gives a small
+but useful audit trail even for a local fixture.
+
+## Reuse connected results offline
+
+The retrieval shown in the chart workflow writes successful responses to its
+bounded `cache_dir`. Repeating the same `read_boj_series()` call with
+`offline = TRUE` replays a matching current snapshot without a network
+request. Requests use HTTPS and official BoJ hosts, and the public API requires
+no BoJ credentials. Typed `readboj_*` conditions distinguish unavailable
+sources, transport failures, invalid responses, and configured resource
+bounds.
+
+For prescribed service wording and BOJ terms links, use:
+
+```{r credit}
+credit <- boj_api_credit()
+credit[c("credit", "api_notice", "copyright", "service_release_contact")]
+```
+
+The package handles parsing and source identity; users remain responsible for
+the BOJ service credit, release notification, and any downstream use of live
+data.
+
+## Where to go next
+
+* [API workflows](api-workflows.html) compares exact-series and hierarchy
+  reads and shows bilingual CSV parsing.
+* [Official files](official-files.html) covers bulk ZIP/CSV and workbook
+  readers, plus the live catalogue and Tankan discovery path.
+* [Reproducibility](reproducibility.html) explains cache directories,
+  provenance, and portable catalogue snapshots.
+* [Troubleshooting](troubleshooting.html) shows how to recognise typed errors,
+  missing-value markers, and resource limits.

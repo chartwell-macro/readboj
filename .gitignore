@@ -1,0 +1,46 @@
+# R session state and local project files
+.Rhistory
+.RData
+.Ruserdata
+.Rproj.user/
+*.Rproj.user/
+
+# Source packages and R CMD check output
+*.tar.gz
+*.tar.bz2
+*.tar.xz
+*.Rcheck/
+*.Rout
+*.Rout.save
+Rplots.pdf
+coverage.rds
+coverage.xml
+coverage.txt
+
+# pkgdown build output. The committed docs/*.md and docs/*.csv files are
+# source evidence and intentionally remain visible to Git.
+_site/
+docs/articles/
+docs/reference/
+docs/news/
+docs/authors/
+docs/*.html
+docs/*.css
+docs/*.js
+docs/*.json
+docs/*.xml
+docs/*.svg
+docs/*.png
+docs/*.jpg
+docs/*.jpeg
+docs/*.gif
+docs/*.webp
+docs/.nojekyll
+docs/sitemap.xml
+docs/pkgdown.yml
+docs/robots.txt
+docs/_redirects
+docs/llms.txt
+docs/llms-full.txt
+docs/figures/
+docs/assets/

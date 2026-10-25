@@ -1,0 +1,99 @@
+url: https://chartwell-macro.github.io/readboj/
+
+development:
+  mode: auto
+
+destination: _site
+
+template:
+  bootstrap: 5
+
+navbar:
+  structure:
+    left: [intro, reference, articles, news]
+    right: [github]
+  components:
+    intro:
+      text: Get started
+      href: articles/readboj.html
+    reference:
+      text: Reference
+      href: reference/index.html
+    articles:
+      text: Workflows
+      menu:
+        - text: Getting started
+          href: articles/readboj.html
+        - text: API workflows
+          href: articles/api-workflows.html
+        - text: Official files
+          href: articles/official-files.html
+        - text: Reproducibility
+          href: articles/reproducibility.html
+        - text: Troubleshooting
+          href: articles/troubleshooting.html
+    news:
+      text: Changelog
+      href: news/index.html
+    github:
+      icon: fab fa-github
+      aria-label: GitHub
+      href: https://github.com/chartwell-macro/readboj
+
+reference:
+  - title: Catalogue discovery
+    contents:
+      - build_boj_catalogue_snapshot
+      - search_boj_catalogue_snapshot
+  - title: API observations
+    contents:
+      - boj_databases
+      - boj_metadata
+      - search_boj_series
+      - read_boj_series
+      - read_boj_layer
+  - title: Bulk files and workbooks
+    contents:
+      - list_boj_bulk_files
+      - download_boj_bulk
+      - read_boj_bulk
+      - read_boj_workbook
+  - title: Tankan releases
+    contents:
+      - list_boj_tankan_releases
+      - list_boj_tankan_assets
+      - download_boj_tankan_asset
+  - title: Reproducibility, cache, and provenance
+    contents:
+      - read_boj_snapshot
+      - boj_provenance
+      - boj_cache_prune
+  - title: Outlook forecasts and maintenance
+    contents:
+      - list_boj_outlook_releases
+      - read_boj_outlook
+      - boj_outlook_data_dir
+      - boj_outlook_status
+      - update_boj_outlook
+      - build_boj_outlook_bundle
+      - list_boj_outlook_calendar
+      - maintain_boj_outlook
+      - boj_outlook_maintenance_status
+      - list_boj_outlook_releases_raw
+      - read_boj_outlook_raw
+  - title: Service information
+    contents:
+      - boj_api_credit
+
+articles:
+  - title: Getting started
+    contents:
+      - readboj
+  - title: Workflows
+    contents:
+      - api-workflows
+      - official-files
+      - reproducibility
+  - title: Support
+    contents:
+      - troubleshooting

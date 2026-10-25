@@ -1,0 +1,77 @@
+name: test-coverage
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: test-coverage-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test-coverage:
+    name: Test coverage (Ubuntu, R release)
+    runs-on: ubuntu-latest
+    env:
+      READBOJ_LIVE_TESTS: "false"
+      READBOJ_LIVE_EXAMPLES: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+        with:
+          r-version: release
+
+      - name: Set up R dependencies
+        uses: r-lib/actions/setup-r-dependencies@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+        with:
+          extra-packages: any::covr, any::xml2
+          needs: coverage
+
+      - name: Calculate test coverage
+        run: |
+          coverage <- covr::package_coverage(
+            path = ".",
+            type = "tests",
+            quiet = FALSE,
+            clean = FALSE,
+            install_path = file.path(
+              normalizePath(Sys.getenv("RUNNER_TEMP"), winslash = "/", mustWork = FALSE),
+              "readboj-coverage"
+            )
+          )
+          print(coverage)
+          saveRDS(coverage, file = "coverage.rds")
+          covr::to_cobertura(coverage, filename = "coverage.xml")
+          writeLines(capture.output(print(coverage)), "coverage.txt")
+        shell: Rscript {0}
+
+      - name: Show testthat output
+        if: always()
+        run: |
+          find "${{ runner.temp }}/readboj-coverage" -name 'testthat.Rout*' -exec cat '{}' \; || true
+        shell: bash
+
+      - name: Upload coverage artifact
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: coverage-${{ github.run_id }}
+          path: |
+            coverage.xml
+            coverage.txt
+            coverage.rds
+            ${{ runner.temp }}/readboj-coverage
+          if-no-files-found: warn
+          retention-days: 14

@@ -1,0 +1,21 @@
+bibentry(
+  bibtype = "Manual",
+  title = "readboj: Auditable Access to Bank of Japan Statistics",
+  author = person(given = "Chartwell", family = "Macro"),
+  year = 2026,
+  note = paste0("R package version ", meta$Version),
+  url = "https://github.com/chartwell-macro/readboj",
+  textVersion = paste0(
+    "Chartwell Macro (2026). readboj: Auditable Access to Bank of Japan Statistics. ",
+    "R package version ", meta$Version,
+    ". https://github.com/chartwell-macro/readboj"
+  )
+)
+
+citFooter(
+  "Package code: MIT, copyright Chartwell Macro.",
+  "Upstream service credit and current terms: run `boj_api_credit()` and",
+  "consult the current Bank of Japan terms before redistributing retrieved",
+  "material. Third-party attribution and license notice: see",
+  "`inst/NOTICE/bojapi-MIT.txt`."
+)

@@ -1,0 +1,41 @@
+name: Check Outlook sources daily
+on:
+  schedule:
+    - cron: '17 3 * * *'
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: outlook-daily
+  cancel-in-progress: false
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    env:
+      READBOJ_OUTLOOK_DATA_DIR: ${{ github.workspace }}/.outlook-user-data
+    steps:
+      - uses: actions/checkout@v4
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          use-public-rspm: true
+      - uses: r-lib/actions/setup-r-dependencies@v2
+      - name: Provision optional source extractor for updater
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - uses: actions/cache@v4
+        with:
+          path: .outlook-user-data
+          key: outlook-data-${{ github.run_id }}-${{ github.run_attempt }}
+          restore-keys: outlook-data-
+      - name: Install into isolated CI library
+        run: |
+          mkdir -p "$RUNNER_TEMP/readboj-library"
+          R CMD INSTALL --library="$RUNNER_TEMP/readboj-library" .
+          echo "R_LIBS=$RUNNER_TEMP/readboj-library:$R_LIBS" >> "$GITHUB_ENV"
+      - name: Maintain Outlook data and official next-release schedule
+        run: Rscript inst/scripts/outlook-daily.R --maintenance --once
+      - name: Report local snapshot freshness
+        run: Rscript -e 'print(readboj::boj_outlook_status())'
+# CI checks source changes and retains its own validated cache. It does not
+# deliver updates to installed consumers. Those run the installed entrypoint
+# against the same user directory that their ordinary readers actually consume.

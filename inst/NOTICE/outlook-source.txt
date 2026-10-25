@@ -1,0 +1,20 @@
+Saved Outlook Report forecast history
+
+Source: Bank of Japan
+Official archive: https://www.boj.or.jp/en/mopo/outlook/index.htm
+Official source terms: https://www.boj.or.jp/en/about/copyright.htm
+
+The outlook-saved.rds bundle contains extracted numeric tables and exact source
+identities for 74 published editions (October 2000 to July 2026). It is official-
+source history, not a synthetic test fixture and not a Bank of Japan endorsement.
+Numeric content SHA-256:
+1933f6789e21b0428573cdb0ffa345e239385aa5355dddac34ade63991d9984c
+
+The package MIT license applies to package code; it does not license Bank of
+Japan data, publications or graphics. Preserve the source credit, exact URLs,
+retrieval/source hashes and semantic notes in downstream uses. Reuse is governed
+by the official source terms linked above, including their permission requirements
+for commercial reproduction, specified materials and graphics.
+
+See docs/outlook.md in the source repository for the fiscal-year, comparison,
+range, missing-value, provenance and incremental-maintenance contract.
