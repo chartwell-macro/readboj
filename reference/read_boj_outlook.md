@@ -146,7 +146,12 @@ provenance.
 ``` r
 history <- read_boj_outlook("all", comparison = "all",
                             data_dir = tempfile("outlook-data-"))
-#> Error: No valid saved Outlook dataset is available.
 head(history[c("release", "fiscal_year", "measure", "statistic", "value")])
-#> Error in history[c("release", "fiscal_year", "measure", "statistic", "value")]: object of type 'closure' is not subsettable
+#>   release fiscal_year           measure      statistic value
+#> 1 2026-07        2026          real_gdp majority_lower   0.6
+#> 2 2026-07        2026          real_gdp majority_upper   0.7
+#> 3 2026-07        2026          real_gdp         median   0.6
+#> 4 2026-07        2026 cpi_ex_fresh_food majority_lower   2.3
+#> 5 2026-07        2026 cpi_ex_fresh_food majority_upper   2.7
+#> 6 2026-07        2026 cpi_ex_fresh_food         median   2.5
 ```

@@ -95,7 +95,26 @@ Edition catalogue with saved-data and discovery provenance.
 
 ``` r
 editions <- list_boj_outlook_releases(data_dir = tempfile("outlook-data-"))
-#> Error: No valid saved Outlook dataset is available.
 head(editions)
-#> Error: object 'editions' not found
+#>   release publication_date                                     banks_view_url
+#> 1 2026-07       2026-07-31 https://www.boj.or.jp/en/mopo/outlook/gor2607a.pdf
+#> 2 2026-04       2026-04-28 https://www.boj.or.jp/en/mopo/outlook/gor2604a.pdf
+#> 3 2026-01       2026-01-23 https://www.boj.or.jp/en/mopo/outlook/gor2601a.pdf
+#> 4 2025-10       2025-10-30 https://www.boj.or.jp/en/mopo/outlook/gor2510a.pdf
+#> 5 2025-07       2025-07-31 https://www.boj.or.jp/en/mopo/outlook/gor2507a.pdf
+#> 6 2025-04       2025-05-01 https://www.boj.or.jp/en/mopo/outlook/gor2504a.pdf
+#>   source_format full_text_date
+#> 1           pdf     2026-08-03
+#> 2           pdf     2026-04-30
+#> 3           pdf     2026-01-26
+#> 4           pdf     2025-10-31
+#> 5           pdf     2025-08-01
+#> 6           pdf     2025-05-02
+#>                                        full_text_url
+#> 1 https://www.boj.or.jp/en/mopo/outlook/gor2607b.pdf
+#> 2 https://www.boj.or.jp/en/mopo/outlook/gor2604b.pdf
+#> 3 https://www.boj.or.jp/en/mopo/outlook/gor2601b.pdf
+#> 4 https://www.boj.or.jp/en/mopo/outlook/gor2510b.pdf
+#> 5 https://www.boj.or.jp/en/mopo/outlook/gor2507b.pdf
+#> 6 https://www.boj.or.jp/en/mopo/outlook/gor2504b.pdf
 ```

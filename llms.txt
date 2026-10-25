@@ -376,7 +376,7 @@ maintenance$next_due_at
 raw <- read_boj_outlook_raw("latest", deadline = Sys.time() + 300)
 ```
 
-The **67,628-byte** numeric bundle covers **74 editions, October 2000 to
+The **67,640-byte** numeric bundle covers **74 editions, October 2000 to
 July 2026**, with 4,142 rows and five explicit NA cells. Its rows
 exactly match the verified complete-archive parser output. Saved reads
 reuse the loaded table; `latest` selects the newest saved edition.
@@ -518,10 +518,10 @@ material. To cite the package in a manuscript or report, use
 separately when your work uses data retrieved from its service.
 
 Outlook publications and graphics retain the Bank of Japan’s separate
-rights. Retain `Source: Bank of Japan` and the exact source links.
-Commercial reuse or reproduction may require prior permission; this
-private package release does not establish that permission or authorize
-public redistribution of the bundled report data. See [the Outlook data
+rights. Retain `Source: Bank of Japan` and the exact source links. The
+[official source terms](https://www.boj.or.jp/en/about/copyright.htm)
+apply to reuse, including their permission requirements for commercial
+reproduction, specified materials and graphics. See [the Outlook data
 contract](https://chartwell-macro.github.io/readboj/docs/outlook.md).
 
 ## Contributing and support

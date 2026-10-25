@@ -28,7 +28,7 @@ boj_outlook_maintenance_status(data_dir = tempfile("outlook-data-"))
 #> [1] "uninitialized"
 #> 
 #> $next_due_at
-#> [1] "2026-10-25T06:19:14Z"
+#> [1] "2026-10-25T07:38:52Z"
 #> 
 #> $due
 #> [1] TRUE
