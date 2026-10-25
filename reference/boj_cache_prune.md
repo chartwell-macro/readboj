@@ -1,0 +1,70 @@
+# Prune the readboj cache to explicit bounds
+
+boj_cache_prune() removes the oldest regular content-addressed raw
+response objects until both configured bounds are satisfied. It also
+removes request index files that point to an object removed in the same
+call. Object age is determined by file modification time, oldest first.
+This is a maintenance operation on an existing cache only: it does not
+fetch, validate, or rebuild responses and it never needs network access.
+
+## Usage
+
+``` r
+boj_cache_prune(
+  cache_dir = boj_cache_dir(),
+  max_bytes = 1024^3,
+  max_entries = 1000L
+)
+```
+
+## Arguments
+
+- cache_dir:
+
+  Path passed to [`dir.exists()`](https://rdrr.io/r/base/files2.html)
+  for the readboj cache directory. The default is boj_cache_dir(), which
+  uses the readboj.cache_dir option or tools::R_user_dir("readboj",
+  "cache").
+
+- max_bytes:
+
+  Maximum total bytes of retained raw response objects. The value must
+  be a finite non-negative number; zero removes every eligible object.
+
+- max_entries:
+
+  Maximum number of retained raw response objects. The value must be a
+  finite non-negative whole number; zero removes every eligible object.
+
+## Value
+
+A four-column data frame with one row and columns removed (integer
+count), bytes_removed (numeric byte count), remaining (integer object
+count), and remaining_bytes (numeric byte count). The values describe
+eligible regular object files after the attempted pruning. There is no
+provenance attribute because this function reports a local maintenance
+action rather than a source response.
+
+## Details
+
+Only files in the readboj cache objects/ and requests/ subdirectories
+that match the package's own names are candidates. Directories, symbolic
+links, malformed indexes, and unrelated files are left untouched. If
+cache_dir does not exist, no directory is created and a zero summary is
+returned. Removed response files and indexes are not moved to a
+recoverable trash location; callers can obtain them again only by
+re-fetching the corresponding official source (subject to its
+availability and terms).
+
+## See also
+
+[`boj_provenance()`](https://chartwell-macro.github.io/readboj/reference/boj_provenance.md)
+
+## Examples
+
+``` r
+# A missing cache is handled without creating directories or using a network.
+summary <- boj_cache_prune(tempfile("readboj-cache-"), max_bytes = 0,
+  max_entries = 0L)
+stopifnot(identical(summary$removed, 0L), identical(summary$remaining, 0L))
+```

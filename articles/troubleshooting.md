@@ -1,0 +1,177 @@
+# Troubleshooting: typed errors, missing values, and resource limits
+
+`readboj` fails closed through documented validation, transport, parser,
+cache, and resource checks when an input or source is not trustworthy.
+These expected failures retain a specific `readboj_*_error` class, so a
+pipeline can handle them without matching a fragile message string. An
+unexpected base or dependency error can still surface from manually
+malformed cache metadata or a third-party file; preserve the input
+identity and report that case.
+
+All default examples here are local and deterministic. The package
+fixtures are synthetic and are labelled as such; they do not stand in
+for official BOJ values.
+
+## Identify a typed condition
+
+An empty offline cache is a useful way to test a network policy without
+contacting the BOJ service. The failure is explicit and
+machine-readable:
+
+``` r
+
+offline_failure <- capture_error(read_boj_series(
+  db = "FM08",
+  code = "SYNTHM01",
+  cache_dir = tempfile("readboj-empty-cache-"),
+  offline = TRUE,
+  wait = 0
+))
+offline_failure$class[1L]
+#> [1] "readboj_offline_error"
+offline_failure$message
+#> [1] "No valid offline snapshot exists for https://www.stat-search.boj.or.jp/api/v1/getDataCode?code=SYNTHM01&db=FM08&format=json&lang=en."
+```
+
+The usual response is to check the cache path, the canonical query, and
+the `max_age` setting. If a connected refresh is permitted, rerun with
+`refresh = TRUE`; otherwise keep the call offline and report that the
+required snapshot is absent.
+
+Input errors are separate from source availability. For example,
+duplicate series codes and reversed period bounds are rejected before
+any network request:
+
+``` r
+
+duplicate_codes <- capture_error(read_boj_series(
+  db = "FM08", code = c("SYNTHM01", "SYNTHM01"),
+  cache_dir = tempfile("readboj-no-request-"), offline = TRUE, wait = 0
+))
+reversed_period <- capture_error(read_boj_series(
+  db = "FM08", code = "SYNTHM01",
+  start_date = "202603", end_date = "202601",
+  cache_dir = tempfile("readboj-no-request-"), offline = TRUE, wait = 0
+))
+c(duplicate = duplicate_codes$class[1L], reversed = reversed_period$class[1L])
+#>                 duplicate                  reversed 
+#> "readboj_parameter_error" "readboj_parameter_error"
+```
+
+Handle these as configuration or user-input issues. Do not retry a
+`readboj_parameter_error` as if it were a transient transport problem.
+
+## Distinguish size and schema failures
+
+Every parser accepts a bound. A deliberately tiny byte bound raises a
+size condition before parsing starts:
+
+``` r
+
+size_failure <- capture_error(read_boj_snapshot(
+  fixture_file("api-data-page-1.json"),
+  type = "data_json",
+  db = "FM08",
+  max_bytes = 10L
+))
+size_failure$class[1L]
+#> [1] "readboj_size_error"
+size_failure$message
+#> [1] "Snapshot exceeds `max_bytes`."
+```
+
+The same principle applies to API cells/pages/codes, metadata rows, bulk
+ZIP entries and bytes, and workbook sheets/rows/columns/cells. Increase
+a bound only when the job’s memory and time budget supports it. API and
+archive readers do not silently return a partial table after crossing a
+declared limit.
+
+Malformed or changed BOJ response fields raise `readboj_schema_error`;
+HTTP/API failures use more specific classes such as
+`readboj_transport_error`, `readboj_auth_error`, or `readboj_api_error`.
+Successful response bodies are cached only after transport and size
+checks pass, so a failed response should not become a valid offline
+object.
+
+## Preserve missing-value markers
+
+Missing values have different representations in different official
+formats. The synthetic JSON fixture contains `null`, while the CSV
+fixture contains an empty field:
+
+``` r
+
+json <- read_boj_snapshot(
+  fixture_file("api-data-page-1.json"), type = "data_json", db = "FM08"
+)
+csv <- read_boj_snapshot(
+  fixture_file("api-data-en-page-1.csv"),
+  type = "data_csv", db = "FM08", language = "en"
+)
+
+json[is.na(json$value), c("period", "value", "raw_value", "value_status")]
+#>   period value raw_value value_status
+#> 2 202602    NA      <NA>         null
+csv[!nzchar(csv$raw_value), c("period", "value", "raw_value", "value_status")]
+#>   period value raw_value value_status
+#> 2 202602    NA                  blank
+```
+
+JSON missing values are labelled `"null"`; blank CSV cells are labelled
+`"blank"`.
+[`read_boj_bulk()`](https://chartwell-macro.github.io/readboj/reference/read_boj_bulk.md)
+additionally retains source strings such as `"NA"` and `"ND"` in its
+`value` column and reports their marker in `value_status`. Treat these
+statuses as source semantics rather than replacing all missing-looking
+values with zero.
+
+## Encoding, credentials, and network checks
+
+Japanese metadata and CSV responses use CP932 in the official interface.
+Pass the encoding explicitly when parsing a local response, and inspect
+both bilingual fields:
+
+``` r
+
+japanese <- read_boj_snapshot(
+  fixture_file("metadata-bilingual-cp932.csv"),
+  type = "metadata_csv",
+  db = "FM08",
+  encoding = "CP932"
+)
+japanese[japanese$is_series, c("series_code", "name_en", "name_jp")]
+#>   series_code                 name_en      name_jp
+#> 2    SYNTHM01 Synthetic monthly index 合成月次指数
+#> 3    SYNTHM02  Synthetic monthly rate 合成月次金利
+```
+
+The BOJ API is public: `readboj` has no credential argument and does not
+write secrets to URLs, cache indexes, or provenance. Requests use HTTPS
+and official BOJ hosts only. If an explicitly opted-in live call fails,
+first inspect the condition class, then distinguish a temporary
+network/rate-limit condition from an API error, authorization rejection,
+schema change, or local resource limit. Keep `offline = TRUE` in
+automated builds and use separately cached runs with
+`READBOJ_LIVE_EXAMPLES=true` for live refreshes.
+
+For the prescribed credit string, API notice, copyright link, and
+service release contact, inspect
+[`boj_api_credit()`](https://chartwell-macro.github.io/readboj/reference/boj_api_credit.md)
+rather than copying a stale string into a report:
+
+``` r
+
+credit <- boj_api_credit()
+credit[c("credit", "api_notice", "copyright", "service_release_contact")]
+#> $credit
+#> [1] "This service uses the API provided by the \"Bank of Japan Time-Series Data Search.\" The Bank of Japan does not guarantee the content of the service."
+#> 
+#> $api_notice
+#> [1] "https://www.stat-search.boj.or.jp/info/api_notice_en.pdf"
+#> 
+#> $copyright
+#> [1] "https://www.boj.or.jp/en/about/copyright.htm"
+#> 
+#> $service_release_contact
+#> [1] "post.rsd17@boj.or.jp"
+```

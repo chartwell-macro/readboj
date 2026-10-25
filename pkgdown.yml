@@ -1,0 +1,13 @@
+pandoc: 3.8.3
+pkgdown: 2.2.1
+pkgdown_sha: ~
+articles:
+  api-workflows: api-workflows.html
+  official-files: official-files.html
+  readboj: readboj.html
+  reproducibility: reproducibility.html
+  troubleshooting: troubleshooting.html
+last_built: 2026-10-25T06:19Z
+urls:
+  reference: https://chartwell-macro.github.io/readboj/reference
+  article: https://chartwell-macro.github.io/readboj/articles

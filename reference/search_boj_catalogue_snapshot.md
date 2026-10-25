@@ -1,0 +1,123 @@
+# Search a portable Bank of Japan catalogue snapshot fully offline
+
+search_boj_catalogue_snapshot() validates the manifest and SHA-256
+identity of every referenced raw CSV before scanning the selected files
+in chunks. It performs no network access, does not consult the live
+catalogue, and retains at most limit matching rows across all selected
+databases. Use
+[`build_boj_catalogue_snapshot()`](https://chartwell-macro.github.io/readboj/reference/build_boj_catalogue_snapshot.md)
+to create the directory and keep the directory together when moving or
+archiving it.
+
+## Usage
+
+``` r
+search_boj_catalogue_snapshot(
+  snapshot_path,
+  query,
+  db = NULL,
+  language = "both",
+  regex = FALSE,
+  limit = 100L,
+  include_groups = FALSE
+)
+```
+
+## Arguments
+
+- snapshot_path:
+
+  A non-empty character scalar naming a directory created by
+  [`build_boj_catalogue_snapshot()`](https://chartwell-macro.github.io/readboj/reference/build_boj_catalogue_snapshot.md).
+  It must contain the manifest and all referenced content-addressed
+  objects.
+
+- query:
+
+  A non-empty character scalar containing literal search text or a
+  regular expression when regex = TRUE.
+
+- db:
+
+  NULL to search every database in the snapshot, or a character vector
+  of known database identifiers to search in that requested order.
+
+- language:
+
+  Search/output language: "both" (default), "en", or "jp".
+  Language-specific output removes the other language's name, unit,
+  category, and notes columns.
+
+- regex:
+
+  Logical scalar; interpret query as a Perl-compatible regular
+  expression when TRUE, otherwise perform a case-insensitive literal
+  match.
+
+- limit:
+
+  Maximum number of matching rows retained across all selected databases
+  (default 100).
+
+- include_groups:
+
+  Logical scalar; include hierarchy rows without a series code when
+  TRUE.
+
+## Value
+
+A data frame with zero or more matching metadata rows and a
+readboj_provenance attribute. With language = "both", columns are db,
+series_code, name_jp, name_en, unit_jp, unit_en, frequency, category_jp,
+category_en, layer1–layer5, start_time, end_time, last_update, notes_jp,
+notes_en, and is_series. The layer columns are integer, last_update is
+Date, is_series is logical, and text fields are character;
+language-specific calls omit the four columns for the other language.
+Rows retain source order within the selected databases and have ordinary
+NULL row names. Provenance records the normalized snapshot path,
+manifest SHA-256, source completeness flag, object hashes, query, result
+limit, and parser schema.
+
+## Details
+
+query is a case-insensitive literal by default. With regex = TRUE, it is
+interpreted as a Perl-compatible regular expression and searched across
+the series code, names, categories, and notes in the requested
+language(s). Group headings have an empty series_code; they are excluded
+unless include_groups = TRUE. The function trusts only the manifest's
+selected files, so a missing, symlinked, tampered, unsafe, or
+schema-invalid file is rejected rather than silently skipped.
+
+## See also
+
+[`build_boj_catalogue_snapshot()`](https://chartwell-macro.github.io/readboj/reference/build_boj_catalogue_snapshot.md),
+[`boj_metadata()`](https://chartwell-macro.github.io/readboj/reference/boj_metadata.md),
+[`boj_provenance()`](https://chartwell-macro.github.io/readboj/reference/boj_provenance.md)
+
+## Examples
+
+``` r
+# Search a packaged synthetic UTF-8 metadata fixture without a network call.
+fixture <- system.file("extdata", "metadata-bilingual-utf8.csv", package = "readboj")
+snapshot_path <- tempfile("readboj-catalogue-")
+object_dir <- file.path(snapshot_path, "objects")
+dir.create(object_dir, recursive = TRUE)
+object_hash <- digest::digest(file = fixture, algo = "sha256", serialize = FALSE)
+object_file <- file.path(object_dir, paste0(object_hash, ".csv"))
+file.copy(fixture, object_file)
+#> [1] TRUE
+manifest <- data.frame(
+  db = "FM08", language = "en",
+  canonical_url = paste0("https://www.stat-search.boj.or.jp/api/v1/getMetadata",
+    "?db=FM08&format=csv&lang=en"),
+  raw_sha256 = object_hash, bytes = unname(file.info(object_file)$size),
+  relative_file = file.path("objects", basename(object_file)),
+  complete_within_database = TRUE, stringsAsFactors = FALSE
+)
+saveRDS(list(schema_version = "1", generated_at = "fixture",
+  declared_databases = "FM08", complete_declared_surface = FALSE,
+  manifest = manifest), file.path(snapshot_path, "manifest.rds"), version = 3)
+result <- search_boj_catalogue_snapshot(
+  snapshot_path, "Synthetic monthly rate", db = "FM08", language = "en")
+stopifnot(identical(result$series_code, "SYNTHM02"))
+```
