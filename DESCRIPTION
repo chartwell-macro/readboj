@@ -1,0 +1,28 @@
+Package: readboj
+Title: Auditable Access to Bank of Japan Statistics
+Version: 0.1.1
+Authors@R: person("Chartwell", "Macro", email = "chartwellmacro@gmail.com", role = c("aut", "cre"))
+Description: Retrieves and searches official Bank of Japan statistical data
+    while retaining exact source identity, raw response hashes, bilingual
+    metadata, and bounded cache snapshots. Supports the Time-Series Data
+    Search application programming interface, official bulk file catalogue,
+    and dated Tankan comprehensive-data release assets.
+License: MIT + file LICENSE
+URL: https://github.com/chartwell-macro/readboj
+BugReports: https://github.com/chartwell-macro/readboj/issues
+Depends: R (>= 4.1.0)
+Imports:
+    digest,
+    httr2,
+    jsonlite,
+    readxl,
+    readr,
+    xml2
+Suggests:
+    testthat (>= 3.0.0),
+    withr,
+    writexl
+Config/testthat/edition: 3
+Encoding: UTF-8
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3
