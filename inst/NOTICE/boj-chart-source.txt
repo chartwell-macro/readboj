@@ -1,0 +1,34 @@
+readboj documentation chart source and provenance
+
+File: man/figures/readboj-fxerm07-2025.png
+Figure SHA-256: 1cefa043fe7d8bb543f0d514f3f2418457f0d7a28f917cfbf9d48cae05843818
+
+This documentation illustration was generated with readboj 0.1.1 and
+ggplot2 from 12 observations returned by the official Bank of Japan
+Time-Series Data Search API. It is not an official Bank of Japan chart and
+does not bundle the raw API response.
+
+Database: FM08
+Series code: FXERM07
+Series name: US.Dollar/Yen Spot Rate at 17:00 in JST, Average in the Month,
+  Tokyo Market
+Unit: Yen per U.S. Dollar
+Frequency: MONTHLY
+Requested periods: 202501 through 202512
+Request URL: https://www.stat-search.boj.or.jp/api/v1/getDataCode?code=FXERM07&db=FM08&endDate=202512&format=json&lang=en&startDate=202501
+Retrieved: 2026-08-25 00:32:01 UTC
+Raw response SHA-256: a2f9ee8492ccdd8b05e770bf0eb09131709d177437c455ac3555280b1ac2d230
+Semantic response SHA-256: 0cfefb8c6d3f0563b63f11bc49d80bb1fc1f38768175354d3623657ae147d691
+Response bytes: 730
+
+Source: Bank of Japan Time-Series Data Search API.
+
+The Bank of Japan API notice and site copyright terms govern use of the
+upstream service and material. See:
+
+https://www.stat-search.boj.or.jp/info/api_notice_en.pdf
+https://www.boj.or.jp/en/copyright.htm
+
+Run boj_api_credit() for the service wording and current links recorded by
+readboj. This notice records provenance and attribution; it does not restate
+or grant permission for downstream use.

@@ -1,0 +1,41 @@
+Package: readboj
+Title: Auditable Access to Bank of Japan Statistics
+Version: 0.2.0
+Authors@R: person(
+    given = "Chartwell",
+    family = "Macro",
+    email = "chartwellmacro@gmail.com",
+    role = c("aut", "cre", "cph")
+  )
+Description: Provides auditable access to official Bank of Japan statistics.
+    Retrieves observations through the Time-Series Data Search API, discovers
+    and reads selected official bulk files, and accesses dated Tankan
+    comprehensive-data release assets. Preserves source identity, raw-response
+    hashes, bilingual metadata, and bounded cache snapshots for reproducible
+    offline workflows. Includes published Outlook Report forecast tables,
+    validated numeric history for local reads, atomic incremental source
+    updates, and calendar-aware release maintenance.
+License: MIT + file LICENSE
+URL: https://github.com/chartwell-macro/readboj, https://chartwell-macro.github.io/readboj/
+BugReports: mailto:chartwellmacro@gmail.com
+Depends: R (>= 4.1.0)
+Imports:
+    digest,
+    httr2,
+    jsonlite,
+    readxl,
+    readr,
+    xml2
+Suggests:
+    ggplot2,
+    knitr,
+    rmarkdown,
+    testthat (>= 3.2.0),
+    withr,
+    writexl
+Config/testthat/edition: 3
+VignetteBuilder: knitr
+Encoding: UTF-8
+SystemRequirements: Optional Poppler pdftotext executable for raw Outlook parsing and updates
+Roxygen: list(markdown = TRUE)
+RoxygenNote: 7.3.3

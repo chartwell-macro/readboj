@@ -1,0 +1,118 @@
+name: pkgdown
+
+on:
+  push:
+    branches:
+      - "**"
+  pull_request:
+    branches:
+      - "**"
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pkgdown-${{ github.event_name }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build and check pkgdown site
+    runs-on: ubuntu-latest
+    env:
+      # Documentation builds must remain deterministic and offline with respect
+      # to BOJ's live services; package dependencies are installed by the job.
+      READBOJ_LIVE_TESTS: "false"
+      READBOJ_LIVE_EXAMPLES: "false"
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+
+      - name: Set up Pandoc
+        uses: r-lib/actions/setup-pandoc@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+
+      - name: Set up R
+        uses: r-lib/actions/setup-r@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+
+      - name: Set up R dependencies
+        uses: r-lib/actions/setup-r-dependencies@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+        with:
+          extra-packages: any::pkgdown, local::.
+          needs: website
+
+      - name: Build site into an isolated directory
+        run: |
+          pkgdown::build_site(
+            pkg = ".",
+            examples = TRUE,
+            run_dont_run = FALSE,
+            preview = FALSE,
+            devel = FALSE,
+            new_process = FALSE,
+            install = FALSE,
+            override = list(destination = "_site")
+          )
+        shell: Rscript {0}
+
+      - name: Check pkgdown links and output
+        run: |
+          pkgdown::check_pkgdown(pkg = ".")
+          stopifnot(file.exists(file.path("_site", "index.html")))
+        shell: Rscript {0}
+
+      - name: Upload built site
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: pkgdown-site
+          path: _site
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 14
+
+  deploy:
+    name: Deploy pkgdown site
+    needs: build
+    # Private source releases must not publish BOJ report data/docs to Pages.
+    if: >-
+      github.event.repository.private == false &&
+      github.event_name != 'pull_request' &&
+      (github.event_name == 'release' ||
+       (github.event_name == 'workflow_dispatch' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch)) ||
+       (github.event_name == 'push' &&
+        github.ref == format('refs/heads/{0}', github.event.repository.default_branch)))
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pkgdown-deploy
+      cancel-in-progress: false
+    permissions:
+      contents: write
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+
+      - name: Download built site
+        uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
+        with:
+          name: pkgdown-site
+          path: _site
+
+      - name: Stage site for deployment
+        run: |
+          mkdir -p "${RUNNER_TEMP}/readboj-site"
+          cp -R _site/. "${RUNNER_TEMP}/readboj-site/"
+
+      - name: Deploy to GitHub Pages
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          branch: gh-pages
+          folder: "${{ runner.temp }}/readboj-site"
+          clean: true
+          force: false

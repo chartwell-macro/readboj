@@ -1,0 +1,191 @@
+---
+title: "Reproducible reads: provenance, cache, and portable snapshots"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{Reproducible reads: provenance, cache, and portable snapshots}
+  %\VignetteEngine{knitr::rmarkdown}
+  \usepackage[utf8]{inputenc}
+---
+
+An API result is easier to audit when a report can answer three questions:
+which source was requested, which bytes were parsed, and which parser schema
+produced the table? `readboj` attaches that information as provenance and
+keeps successful network responses in a bounded content-addressed cache.
+
+This article uses a shipped synthetic response so that every default chunk is
+deterministic and offline. The fixture's values are not official BOJ data.
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(collapse = TRUE, comment = "#>", width = 78)
+library(readboj)
+
+fixture_file <- function(name) {
+  path <- system.file("extdata", name, package = "readboj")
+  if (!nzchar(path)) {
+    candidates <- c(file.path("inst", "extdata", name),
+      file.path("..", "inst", "extdata", name))
+    path <- candidates[file.exists(candidates)][1L]
+  }
+  if (!nzchar(path) || !file.exists(path)) stop("Fixture is unavailable: ", name)
+  normalizePath(path, mustWork = TRUE)
+}
+```
+
+## Record exact response identity
+
+Parsing a local response body is a useful way to certify a transformation
+without relying on current network state:
+
+```{r parse-and-provenance}
+path <- fixture_file("api-data-page-1.json")
+result <- read_boj_snapshot(path, type = "data_json", db = "FM08")
+provenance <- boj_provenance(result)
+provenance[c(
+  "source", "raw_sha256", "semantic_sha256", "bytes",
+  "parser_schema", "package_version"
+)]
+basename(provenance$path)
+```
+
+`raw_sha256` identifies the exact bytes, including formatting. For JSON and
+CSV responses, `semantic_sha256` is designed to ignore only the volatile API
+retrieval date while retaining the data and response structure. `bytes`,
+`parser_schema`, and `package_version` help explain why a future reparse might
+not be identical.
+
+The same input is deterministic across repeated parses:
+
+```{r repeat-parse}
+again <- read_boj_snapshot(path, type = "data_json", db = "FM08")
+identical(result, again)
+identical(
+  boj_provenance(result)[c("raw_sha256", "semantic_sha256")],
+  boj_provenance(again)[c("raw_sha256", "semantic_sha256")]
+)
+```
+
+Keep the data object and its provenance together when serialising a result.
+The provenance attribute is part of the returned object and can be extracted
+before writing a separate audit record.
+
+## Use an explicit cache and offline replay
+
+Live API, metadata, bulk, and Tankan readers accept `cache_dir`, `max_age`,
+and `offline`. For a portable project, choose a project-managed cache path
+explicitly and record it in the project instructions rather than relying on a
+machine-specific default. A successful response is stored under its raw hash;
+the request index binds the canonical URL and query to that object.
+
+```{r cache-policy}
+cache_dir <- file.path(tempdir(), "readboj-repro-cache")
+cache_summary <- boj_cache_prune(
+  cache_dir = cache_dir,
+  max_bytes = 10 * 1024^2,
+  max_entries = 20L
+)
+cache_summary
+```
+
+`boj_cache_prune()` removes only readboj cache objects and matching request
+indexes. Directories and unrelated files are left alone. The default cache
+limits are bounded, and an explicit `boj_cache_prune()` call makes a smaller
+report-specific limit visible in a pipeline.
+
+With a populated cache, the following pattern makes the network policy
+explicit. It is opt-in because the package does not ship an official cached
+response for this series:
+
+```{r live-and-replay}
+live <- identical(Sys.getenv("READBOJ_LIVE_EXAMPLES"), "true")
+if (live) {
+  live_result <- read_boj_series(
+    db = "FM08",
+    code = "FXERM07",
+    start_date = "202601",
+    end_date = "202606",
+    cache_dir = cache_dir,
+    timeout = 10,
+    retries = 0L,
+    wait = 0,
+    max_bytes = 8 * 1024^2,
+    max_pages = 2L,
+    max_cells = 1000L,
+    max_codes_total = 1L,
+    deadline = Sys.time() + 30
+  )
+  replay <- read_boj_series(
+    db = "FM08",
+    code = "FXERM07",
+    start_date = "202601",
+    end_date = "202606",
+    cache_dir = cache_dir,
+    offline = TRUE,
+    wait = 0,
+    max_bytes = 8 * 1024^2,
+    max_pages = 2L,
+    max_cells = 1000L,
+    max_codes_total = 1L,
+    deadline = Sys.time() + 30
+  )
+  live_rows <- live_result
+  replay_rows <- replay
+  attr(live_rows, "readboj_provenance") <- NULL
+  attr(replay_rows, "readboj_provenance") <- NULL
+  identical(live_rows, replay_rows)
+  identical(
+    vapply(boj_provenance(live_result)$pages, `[[`, "", "raw_sha256"),
+    vapply(boj_provenance(replay)$pages, `[[`, "", "raw_sha256")
+  )
+} else {
+  message("Set READBOJ_LIVE_EXAMPLES=true to run this live example.")
+}
+```
+
+The row values and response hashes match, while provenance correctly records
+the online fetch as a cache miss and the replay as a cache hit.
+`offline = TRUE` never falls back to a network request. If the canonical URL
+and query do not have a current matching snapshot, the call stops with a
+`readboj_offline_error`. A stale snapshot can be deliberately refreshed in a
+connected run by setting `refresh = TRUE`; failed responses are not published
+as successful cache objects.
+
+## Build a portable metadata catalogue
+
+For a larger metadata job, `build_boj_catalogue_snapshot()` copies exact
+metadata response bodies into a portable directory and writes hash-pinned RDS
+and CSV manifests. `search_boj_catalogue_snapshot()` then searches those
+objects fully offline. The complete workflow is shown below as an optional
+opt-in example because building even one real catalogue object requires an
+official network response:
+
+```{r live-catalogue}
+live <- identical(Sys.getenv("READBOJ_LIVE_EXAMPLES"), "true")
+if (live) {
+  catalogue_dir <- file.path(tempdir(), "readboj-catalogue")
+  manifest <- build_boj_catalogue_snapshot(
+    path = catalogue_dir,
+    db = "FM08",
+    language = "both",
+    cache_dir = cache_dir,
+    timeout = 10,
+    retries = 0L,
+    wait = 0,
+    max_bytes = 8 * 1024^2,
+    max_databases = 1L,
+    max_rows_per_db = 10000L,
+    max_total_bytes = 64 * 1024^2,
+    deadline = Sys.time() + 60
+  )
+  manifest[, c("db", "raw_sha256", "row_count", "series_count")]
+
+  search_boj_catalogue_snapshot(
+    catalogue_dir, query = "FXERM", db = "FM08", limit = 10L
+  )
+} else {
+  message("Set READBOJ_LIVE_EXAMPLES=true to run this live example.")
+}
+```
+
+A catalogue snapshot is a bounded, declared surface rather than a claim that
+the BOJ catalogue never changes. Preserve its manifest with the report and
+cite the retrieval date and source hashes when results are published.
