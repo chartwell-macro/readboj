@@ -50,7 +50,7 @@ jobs:
           http-user-agent: ${{ matrix.config.http-user-agent }}
 
       - name: Set up R dependencies
-        uses: r-lib/actions/setup-r-dependencies@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+        uses: r-lib/actions/setup-r-dependencies@d8f8ce35b0abc25ec9fc79f6372ec25a9f7f671d # v2
         with:
           extra-packages: any::rcmdcheck
           needs: check
