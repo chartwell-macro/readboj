@@ -33,7 +33,7 @@ jobs:
         uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
 
       - name: Set up Pandoc
-        uses: r-lib/actions/setup-pandoc@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
+        uses: r-lib/actions/setup-pandoc@d8f8ce35b0abc25ec9fc79f6372ec25a9f7f671d # v2
 
       - name: Set up R
         uses: r-lib/actions/setup-r@5cc1f0d89c5281319eaa97952fe65a6d55e6f816 # v2
